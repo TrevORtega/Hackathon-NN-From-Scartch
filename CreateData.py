@@ -6,8 +6,9 @@ import numpy as np
 
 class Datoid:
     def __init__(self, num1, num2, num_range):
-
+        # Regular additon result
         self.result = num1 + num2
+        # The amount of bits for each num in binary
         self.num_range = num_range
 
         self.num1 = binary_encode(num1, self.num_range)
@@ -35,8 +36,8 @@ def binary_decode(num):
     total = 0
 
     # if num has a one in the ith place, add 2^i to the total
-    for i in range(len(num)):
-        if num[i] == 1:
+    for i in num[1:]:
+        if i == 1:
             total = np.exp2(i-1) + total
 
     # make total negative if the sign == 1
@@ -44,7 +45,6 @@ def binary_decode(num):
         return int(total * -1)
 
     return int(total)
-
 
 
 def dataToFile(datoids):
@@ -65,8 +65,6 @@ def dataToFile(datoids):
 
 
 def makeDatoids(amount, binary_range):
-
-
     # Where we will store our data pieces
     datoids = []
 
@@ -75,11 +73,13 @@ def makeDatoids(amount, binary_range):
 
     # Stores 2 numbers that add to an answer
     for i in range(amount):
+
         # Create two random numbers in a desired range
-        n1 = random.randint(0, np.exp2(binary_range) - 1)
-        n2 = random.randint(0, np.exp2(binary_range) - 1)
+        n1 = random.randint(-1 * (np.exp2(binary_range) - 1), np.exp2(binary_range) - 1)
+        n2 = random.randint(-1 * (np.exp2(binary_range) - 1), np.exp2(binary_range) - 1)
 
         dato = Datoid(n1, n2, binary_range)
+
         # Go through the 2 binary number arrays in the datoid
         for arr in dato.nums:
             # Go through the numbers in the binary array
@@ -94,14 +94,5 @@ def makeDatoids(amount, binary_range):
 
 
 dataToFile(makeDatoids(20, 3))
-# final = []
-# dato = Datoid(7, 0, 3)
-# # Go through the 2 binary number arrays in the datoid
-# for arr in dato.nums:
-#     # Go through the numbers in the binary array
-#     for j in arr:
-#         final.append(j)
-#
-# # Append a tuple to datoids
-# print(final, dato.result)
+# Decode "nums" from Datoid (a 2 number binary array)
 # print(binary_decode(final[:len(final)//2]), binary_decode(final[len(final)//2:]))
