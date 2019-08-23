@@ -10,30 +10,47 @@ class NeuralNetwork:
 
         # Create the biases in a format of a [y x 1] matrix for each layer
         self.biases = [np.random.randn(y, 1) for y in layers[1:]]
-        #Create the weights for each layer in the format [[neurons in layer 1 x neurons in layer 2][n in 1 x n in 3]...]
+        # Create the weights for each layer in the format [[neurons in layer 1 x neurons in layer 2][n in 1 x n in 3]...]
         self.weights = [np.random.randn(y, x) for x, y in zip(layers[:-1], layers[1:])]
 
         # Create the desired data set with given size and range of numbers
-        self.training_data = makeDatoids(10, self.layers[0] - 2)
-        self.learning_data = makeDatoids(3000, self.layers[0] - 2)
+        # The range of each number in first layer: 1/2 (of the total first layer nodes) - 1 (bit reserved for - or +)
+        self.training_data = makeDatoids(10, self.layers[0] // 2 - 1)
+        self.learning_data = makeDatoids(3000, self.layers[0] // 2 - 1)
 
 
 
 
     # Take in an array of 1s and 0s as input and then return the output of network
     # This function's credit (as well as code for weights and biases) to https://github.com/mnielsen/neural-networks-and-deep-learning/blob/master/src/network.py
-    def feedforward(self, a):
-        print('Input: \n', a)
-        print('Weights: \n', self.weights)
-        print('Biases: \n', self.biases)
-        # Starts with input layer of neurons
-        #for w, b in zip(self.weights, self.biases):
-            # For each layer, muliply the input layer times the weights and then add the biases
-            # Each layer's output layer becomes the input layer for the next layer
-            #a = sigmoid(np.dot(w, a) + b)
+    def feedforward(self, net):
 
-        return None
+        for l_count, layer in enumerate(net):
+            # Start at layer 1, and still have access to layer 0
+            if l_count == 0:
+                continue
+            for a_count, a in enumerate(layer):
+                w = self.weights[l_count - 1][a_count]
+                b = self.biases[l_count - 1][a_count]
+                # print('a: \n', net[l_count][a_count])
+                # print('w: \n', weights[l_count - 1][a_count])
+                # print('b: \n', biases[l_count - 1][a_count])
+                z = np.dot(w, a) + b
+                net[l_count][a_count] = sigmoid(add_array_elements(z))
 
+        return net
+
+    # Find the cost function for the results of the network
+    def cost_function(self, output):
+        cost = []
+        # Compare expected result to the measured result
+        for expected in self.training_data:
+            for measured in output:
+                cost.append(np.square(float(measured) - float(expected[1])))
+
+        return cost
+
+    # Learning: Using calculus in order to decrease our cost function
     def backprop(self):
         return None
 
@@ -143,7 +160,12 @@ class NeuralNetwork:
 
 
 
-
+# Adds elements of arrays together
+def add_array_elements(arr):
+    total = 0
+    for n in range(0, len(arr)):
+        total = total + arr[n]
+    return total
 
 
 # sigmoid function
