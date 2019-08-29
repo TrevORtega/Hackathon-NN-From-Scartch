@@ -8,6 +8,9 @@ class Datoid:
     def __init__(self, num1, num2, num_range):
         # Regular additon result
         self.result = num1 + num2
+        # Result in binary
+        self.binary_result = binary_encode(self.result, num_range + 1)
+
         # The amount of bits for each num in binary
         self.num_range = num_range
 
@@ -34,11 +37,10 @@ def binary_decode(num):
 
     # combined total of the binary digits
     total = 0
-
     # if num has a one in the ith place, add 2^i to the total
-    for i in num[1:]:
-        if i == 1:
-            total = np.exp2(i-1) + total
+    for i in range(1, len(num)):
+        if num[i] == 1:
+            total = np.exp2(i - 1) + total
 
     # make total negative if the sign == 1
     if sign == 1:
@@ -59,7 +61,6 @@ def dataToFile(datoids):
         f.write(str(binary_decode(tup[0][:len(tup[0])//2])))
         f.write('           ')
         f.write(str(binary_decode(tup[0][len(tup[0])//2:])))
-
 
     f.close()
 
@@ -87,7 +88,7 @@ def makeDatoids(amount, binary_range):
                 final.append(j)
 
         # Append a tuple to datoids
-        datoids.append((final, dato.result))
+        datoids.append((final, dato.result, dato.binary_result))
         final = []
 
     return datoids
