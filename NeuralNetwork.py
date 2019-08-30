@@ -18,8 +18,8 @@ class NeuralNetwork:
         # Create the desired data set with given size and range of numbers
         """ The range for each number in first layer is:
         1/2 of the total first layer nodes - 1 (the bit reserved for - or +)"""
-        self.training_data = makeDatoids(10, self.layers[0] // 2 - 1)
-        self.testing_data = makeDatoids(10, self.layers[0] // 2 - 1)
+        self.training_data = makeDatoids(1400, self.layers[0] // 2 - 1)
+        self.testing_data = makeDatoids(600, self.layers[0] // 2 - 1)
 
     # Take in an array of 1s and 0s as input and then return the output of network
     def feedforward(self, net):
@@ -61,7 +61,6 @@ class NeuralNetwork:
         d_weight = []
         # Derivative of cost with respect to the bias. Fill with empty zeros (n in layer L)
         d_bias = []
-        #print('Net: \n', net[0], '\n', net[1], '\n', net[2])
 
         # Iterate through each neuron in the last layer
         for a_count, a in enumerate(actual):
@@ -76,6 +75,7 @@ class NeuralNetwork:
 
             # ADJUSTING THE WEIGHTS
 
+            num_weights = len(actual) * len(a_1)
             # Iterate through the weights of a single neuron in the last layer
             for w_count, w in enumerate(self.weights[l_count - 1][a_count]):
                 # Record this neuron's desired changes to the weights. (dCost / dWeight)
@@ -90,6 +90,8 @@ class NeuralNetwork:
 
             """ For each weight in the last layer, 
             we record adjustments all the neurons in the previous layer"""
+            # # of weights = neurons in last layer * neurons in last layer - 1
+
             temp_d_a = []
             # Iterate through each weight for a node in the last layer
             for w_count, w in enumerate(self.weights[l_count - 1]):
@@ -102,12 +104,11 @@ class NeuralNetwork:
                 to all the neurons in the previous layer (dCost / dA_1)"""
                 temp_d_a = np.add(temp_d_a, neuron_changes)
 
-        # Average the changes to the weir
-        d_weight = np.divide(d_weight, len(actual))
-
+        # Average the changes to the weight
+        d_weight = [x / len(actual) for x in d_weight]
         # Average the changes to the biases by dividing by number of neurons in last layer
-        # For some reason deleting this ruins it
         d_bias = np.divide(d_bias, len(actual))
+
         # Average the changes to the previous layer neurons by dividing by # of neurons in last layer
         d_a = np.divide(temp_d_a, len(actual))
 
@@ -120,8 +121,8 @@ class NeuralNetwork:
 
         ''' Add the changes from the rest of the network to our
         arrays for the changes to the weights and biases'''
-        d_weight = [d_weight, dw_1]
-        d_bias = [d_bias, db_1]
+        d_weight = np.array(d_weight), np.array(dw_1)
+        d_bias = d_bias, db_1
 
         # Return the proposed changes to the weights and biases
         return d_weight, d_bias
@@ -146,21 +147,22 @@ class NeuralNetwork:
         save the changes to the weights that the back propagation makes.
         Then average the changes over that specific batch of data and save it.
         Then average the changes to the weights over all mini batches
-        for our final results. For this example, our data is already
-        randomized so there is no need to shuffle it"""
+        for our final results."""
+        random.shuffle(self.training_data)
         # The changes to the weights and biases
         weights = []
         biases = []
         num_mini_batches = len(self.training_data) // mini_batch_size
-
+        # The learning rate of the network
+        lr = 1
         for i in range(num_mini_batches):
             # The start and end of the next mini batch
             start = i * mini_batch_size
             end = (i + 1) * mini_batch_size
-            # The learning rate of the network
-            lr = 0.1
+
             mini_weights = []
             mini_biases = []
+
 
             # Creating the average changes to weights/biases for one mini-batch
             for d_count, data in enumerate(self.training_data[start:end]):
@@ -176,24 +178,26 @@ class NeuralNetwork:
                 else:
                     mini_weights = np.add(mini_weights, w)
                     mini_biases = np.add(mini_biases, b)
-
             # Add the weights and biases of each mini batch together
             if i == 0:
                 weights = mini_weights
                 biases = mini_biases
             else:
-                weights = np.add(weights, mini_weights * lr)
-                biases = np.add(biases, mini_biases * lr)
+                weights = np.add(weights, mini_weights)
+                biases = np.add(biases, mini_biases)
+
+
+
         # Average the weights and biases for every mini batch
         weights = np.divide(weights, num_mini_batches)
         biases = np.divide(biases, num_mini_batches)
-
         # Reformat the weights and biases in the same shape as the network weights and biases
         weights, biases = self.reformat_weights_biases(weights, biases)
-
+        #print('w * lr: \n', weights[0][0][0] * lr)
         # Update the network weights and biases
-        self.weights = np.add(self.weights, weights)
-        self.biases = np.add(self.biases, biases)
+        self.weights = np.add(self.weights, weights * lr)
+        self.biases = np.add(self.biases, biases * lr)
+        #print('post: \n', self.weights[0][0][0])
 
     """ Reformat the final weight and bias adjustment arrays 
     in order to subtract from the network weights and biases"""
@@ -202,7 +206,15 @@ class NeuralNetwork:
         w = w[::-1]
         b = b[::-1]
 
-        # Make w the same shape as the network weights
+        # If only 2 layers in net, there is only one layer of weights and biases
+        if self.num_layers < 3:
+            shape = np.shape(self.weights)
+            w = np.reshape(w, shape)
+            shape = np.shape(self.biases)
+            b = np.reshape(b, shape)
+            return w, b
+
+        # Else for each layer in self.weights make w the same shape as the network weights
         for i, weights in enumerate(self.weights):
             shape = np.shape(weights)
             w[i] = np.reshape(w[i], shape)
@@ -220,13 +232,13 @@ class NeuralNetwork:
         input_layer = [np.array(num)]
 
         # Random values for the neurons of the other layers
-        random_layers = [np.random.randn(y) for y in self.layers[1:]]
+        random_layers = [np.zeros(y) for y in self.layers[1:]]
 
-        # Make sure the neurons are between 0 and 1
+        # Make sure the neurons are between 0 and 1, but not too big or too small
         # Not computationally efficient for now, but will work
         for array in random_layers:
             for i, x in enumerate(array):
-                array[i] = sigmoid(x)
+                array[i] = sigmoid(random.randrange(-5, 5))
 
         # Combine the two arrays and return
         return input_layer + random_layers
@@ -250,7 +262,7 @@ class NeuralNetwork:
             outin.append((np.array(out), nums[2]))
 
         # Return the results
-        return outin
+        return outin, neurons
 
     # Calculates the percentage of correct answers
     def test_network(self):
@@ -258,13 +270,88 @@ class NeuralNetwork:
         outin = self.feed_and_regurgitate()
 
         amount_correct = 0
-        total = (len(outin) - 1)
+        total = (len(outin[0]) - 1)
+        cost = 0
         # Iterate through each tuple of output and input
-        for tup in outin:
+        for tup in outin[0]:
             if np.array_equal(tup[0], tup[1]):
                 amount_correct += 1
-        return round((amount_correct / total) * 100, 3), outin
+            a = binary_decode(tup[0])
+            b = binary_decode(tup[1])
+            cost += np.square(a - b) / total
 
+
+        percent = round((amount_correct / total) * 100, 3)
+        return cost, percent, outin
+
+    # Save the weights and biases to a txt file
+    def save_weights_biases(self):
+        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        f = open(os.path.join(__location__, "WeightsAndBiases.txt"), 'w')
+        for layer in self.weights:
+            for num in layer:
+                f.write(' ' + ' '.join(str(n) for n in num) + ' ')
+            f.write('\n')
+        f.write('\n')
+        for layer in self.biases:
+            for num in layer:
+                f.write(' ' + ' '.join(str(n) for n in num) + ' ')
+            f.write('\n')
+
+    # Load weights and biases from txt file to self.weights and self.biases
+    def load_working_net(self):
+        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        f = open(os.path.join(__location__, "WeightsAndBiases.txt"), 'r')
+        fl = f.readlines()
+        weights = []
+        line_count = 0
+        for line in fl:
+            w = [float(x) for x in line.split()]
+            if w == []:
+                break
+            # Kind of a cheap trick, shouldn't have to make the original arrays
+            weights.append(np.array(w).reshape(np.shape(self.weights[line_count])))
+            line_count += 1
+
+        biases = []
+        for i, line in enumerate(fl):
+            if i <= line_count:
+                continue
+            b = [float(x) for x in line.split()]
+            # Kind of a cheap trick, shouldn't have to make the original arrays
+            biases.append(np.array(b).reshape(np.shape(self.biases[i - (1 + line_count)])))
+
+        self.weights = weights
+        self.biases = biases
+
+# Turn a number into binary with leading bit as -/+
+def binary_encode(num, num_range):
+    # get the sign of the number and if it is negative, make it positive
+    if num >= 0:
+        sign = 0
+    else:
+        sign = 1
+        num = num * -1
+    arr = np.array([sign] + [num >> d & 1 for d in range(num_range)])
+    return arr
+
+# Turn a number from binary to base 10
+def binary_decode(num):
+    # last digit is 1 if negative, else 0
+    sign = num[0]
+
+    # combined total of the binary digits
+    total = 0
+    # if num has a one in the ith place, add 2^i to the total
+    for i in range(1, len(num)):
+        if num[i] == 1:
+            total = np.exp2(i - 1) + total
+
+    # make total negative if the sign == 1
+    if sign == 1:
+        return int(total * -1)
+
+    return int(total)
 
 # Adds elements of arrays together
 def add_array_elements(arr):

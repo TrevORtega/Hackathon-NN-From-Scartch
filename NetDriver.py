@@ -1,6 +1,7 @@
 import NeuralNetwork
 import numpy as np
-
+import random
+import os
 
 def main():
     #num1 = int(input("Enter 1st number to add"))
@@ -9,24 +10,25 @@ def main():
     num2 = 3
     # Initialize the network
     nn = create_addition_network(num1, num2)
-    epoch = 5
+    outin, neurons = nn.feed_and_regurgitate()
+    nn.backprop(neurons, outin[0][1], nn.layers)
+    epoch = 100
     for i in range(epoch):
-        results, outin = nn.test_network()
-        print(results)
-        nn.SGD(2)
-
-
-
-
-
-    #np.save(w, b)
+        cost, percent, outin = nn.test_network()
+        print(i)
+        print('cost: ', cost)
+        print('correct: ', percent)
+        nn.SGD(128)
+        print('\n\n')
+    nn.save_weights_biases()
 
 def create_addition_network(n1, n2):
     # Turn numbers into binary data
     # datoid = Datoid(n1, n2, 11)
 
     # Make a Neural Network
-    nn = NeuralNetwork.NeuralNetwork([4, 6, 3])
+    # supports numbers up to 1024
+    nn = NeuralNetwork.NeuralNetwork([24, 16, 13])
     # nn = NeuralNetwork.NeuralNetwork([len(datoid.nums), 16, (len(datoid.nums) / 2) + 1])
 
     # First layer >= 4. One bit for each number + One bit for negative or positive = 4 bits = [0101]
